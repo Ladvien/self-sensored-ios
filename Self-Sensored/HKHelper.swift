@@ -10,14 +10,28 @@ import Foundation
 import HealthKit
 import SwiftyJSON
 
+// TODO: Create a delegate protocol for handling
+//       JSON returned from query.
+// https://useyourloaf.com/blog/quick-guide-to-swift-delegates/
+
+// TODO: Create a case statement to look up sensible unit
+//       for whatever ActivityType selected by the user.
+
+
+// Types:
+// Characteristics.  Fairly static.  Should go in the user table.
+// https://developer.apple.com/documentation/healthkit/hkcharacteristictypeidentifier
+// Quantity.  Lion's share of the data.
+// https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier
+
+
+
 class HealthKitHelper {
     
     let healthStore = HKHealthStore()
     
     init(readDataTypes: Set<HKObjectType>, writeDataTypes: Set<HKSampleType>) {
-        
         if HKHealthStore.isHealthDataAvailable() {
-            
             healthStore.requestAuthorization(toShare: writeDataTypes, read: readDataTypes) { (success, error) in
                 if !success {
                     // Handle the error here.
@@ -58,7 +72,7 @@ class HealthKitHelper {
                                                  
                                              }
                                          }
-                                            print(json)
+                                        print(json)
          }
          
          // Execute the query.
@@ -129,11 +143,42 @@ extension HKQuantitySample {
         let result: JSON = [ self.quantityType.identifier: [
             "date": self.startDate.toString(),
             "activity_type": self.sampleType.identifier,
-            "quantity_type": self.quantityType.identifier,
-            "quantity": self.quantity.doubleValue(for: HKUnit.count()),
+            "quantity_type": self.commonExpressedUnit().unitString,
+            "quantity": self.toCommonHKUnit(),
             "device": self.device?.toJSON() ?? JSON()
             ]
         ]
         return result
+    }
+}
+
+extension HKQuantitySample {
+    func toCommonHKUnit() -> Double {
+        self.quantity.doubleValue(for: self.commonExpressedUnit())
+    }
+}
+
+extension HKQuantitySample {
+    func commonExpressedUnit() -> HKUnit {
+        var unitType:HKUnit = HKUnit.count()
+        switch self.quantityType.identifier {
+        case HKQuantityTypeIdentifier.stepCount.rawValue:
+            unitType = HKUnit.count()
+            break
+        case HKQuantityTypeIdentifier.dietaryEnergyConsumed.rawValue:
+            unitType = HKUnit.kilocalorie()
+            break
+        case HKQuantityTypeIdentifier.heartRate.rawValue:
+            unitType = HKUnit.count().unitDivided(by: HKUnit.minute())
+            break
+        case HKQuantityTypeIdentifier.restingHeartRate.rawValue:
+            unitType = HKUnit.count().unitDivided(by: HKUnit.minute())
+            break
+        default:
+            // TODO: Handle improper unit.
+            print("Not valid HKUnit")
+            break
+        }
+        return unitType
     }
 }

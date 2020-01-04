@@ -37,7 +37,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             window.makeKeyAndVisible()
         }
         
-        let activity = HKQuantityTypeIdentifier.stepCount
+        let activity = HKQuantityTypeIdentifier.restingHeartRate
         
         let readDataTypes : Set = [HKObjectType.quantityType(forIdentifier: activity)!,
                                    HKObjectType.characteristicType(forIdentifier: HKCharacteristicTypeIdentifier.biologicalSex)!,
@@ -48,7 +48,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         
         let hkh = HealthKitHelper(readDataTypes: readDataTypes, writeDataTypes: writeDataTypes)
         
-        hkh.queryQuantityTypeByDateRange(activity: activity, queryStartDate: "2019-07-01", queryEndDate: "2019-07-19")
+        hkh.queryQuantityTypeByDateRange(activity: activity, queryStartDate: "2017-07-01", queryEndDate: "2020-01-01")
         
     }
     
