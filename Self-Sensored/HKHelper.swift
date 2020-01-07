@@ -12,6 +12,13 @@ import SwiftyJSON
 
 protocol HKQueryDelegate {
     func queryComplete(results: [Dictionary<String, Any>], identifier: String)
+    func healthKitStoreStateUpdate(state: HealthKitStoreState)
+}
+
+enum HealthKitStoreState {
+    case ready
+    case notAuthorized
+    case unknown
 }
 
 // TODO: Create a delegate protocol for handling
@@ -34,15 +41,19 @@ class HealthKitHelper {
     
     let healthStore = HKHealthStore()
     var delegate: HKQueryDelegate?
+    var healthKitStoreState: HealthKitStoreState = .unknown
     
-    init(readDataTypes: Set<HKObjectType>, writeDataTypes: Set<HKSampleType>) {
+    init() {}
+    
+    func requestDataTypesAuthorization(readDataTypes: Set<HKObjectType>, writeDataTypes: Set<HKSampleType>) {
         if HKHealthStore.isHealthDataAvailable() {
             healthStore.requestAuthorization(toShare: writeDataTypes, read: readDataTypes) { (success, error) in
-                if !success {
-                    // Handle the error here.
+                if success {
+                    self.healthKitStoreState = .ready
                 } else {
-                    
+                    self.healthKitStoreState = .notAuthorized
                 }
+                self.delegate?.healthKitStoreStateUpdate(state: self.healthKitStoreState)
             }
         }
     }

@@ -13,7 +13,10 @@ import HealthKit
 import SwiftyJSON
 import Alamofire
 
+var hkh = HealthKitHelper()
+
 class SceneDelegate: UIResponder, UIWindowSceneDelegate, HKQueryDelegate {
+    
     func queryComplete(results: [Dictionary<String, Any>], identifier: String) {
         // Convert to Alamofire parameters.
         for result in results {
@@ -24,6 +27,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, HKQueryDelegate {
                     }
         }
     }
+    
+    func healthKitStoreStateUpdate(state: HealthKitStoreState) {
+        let activity = HKQuantityTypeIdentifier.heartRate
+        if state == .ready {
+            hkh.queryQuantityTypeByDateRange(user_id: 1, activity: activity, queryStartDate: "2019-11-03", queryEndDate: "2020-01-01")
+        } else {
+            print("Not authorized")
+        }
+    }
 
     var window: UIWindow?
 
@@ -32,7 +44,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, HKQueryDelegate {
         // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
         // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
 
-        
+        hkh.delegate = self
         
         // Get the managed object context from the shared persistent container.
         let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
@@ -57,13 +69,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, HKQueryDelegate {
                                    HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyMass)!]
         
         let writeDataTypes : Set = [HKObjectType.quantityType(forIdentifier: activity)!]
+
         
-        let hkh = HealthKitHelper(readDataTypes: readDataTypes, writeDataTypes: writeDataTypes)
-        
-        hkh.delegate = self
-        
-        hkh.queryQuantityTypeByDateRange(user_id: 1, activity: activity, queryStartDate: "2019-11-03", queryEndDate: "2020-01-01")
-        
+        hkh.requestDataTypesAuthorization(readDataTypes: readDataTypes, writeDataTypes: writeDataTypes)
     }
     
     func sceneDidDisconnect(_ scene: UIScene) {
