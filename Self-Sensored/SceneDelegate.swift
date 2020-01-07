@@ -11,8 +11,19 @@ import UIKit
 import SwiftUI
 import HealthKit
 import SwiftyJSON
+import Alamofire
 
-class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+class SceneDelegate: UIResponder, UIWindowSceneDelegate, HKQueryDelegate {
+    func queryComplete(results: [Dictionary<String, Any>], identifier: String) {
+        // Convert to Alamofire parameters.
+        for result in results {
+                    let parameters : Parameters = result
+                    let url = "http://maddatum.com:3000/activities/\(identifier)"
+                    Alamofire.request(url, method: .post, parameters: parameters, encoding: Alamofire.JSONEncoding.default).response { response in
+            //                                                            print(response)
+                    }
+        }
+    }
 
     var window: UIWindow?
 
@@ -21,6 +32,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
         // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
 
+        
         
         // Get the managed object context from the shared persistent container.
         let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
@@ -48,7 +60,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         
         let hkh = HealthKitHelper(readDataTypes: readDataTypes, writeDataTypes: writeDataTypes)
         
-        hkh.queryQuantityTypeByDateRange(activity: activity, queryStartDate: "2017-07-01", queryEndDate: "2020-01-01")
+        hkh.delegate = self
+        
+        hkh.queryQuantityTypeByDateRange(user_id: 1, activity: activity, queryStartDate: "2019-11-03", queryEndDate: "2020-01-01")
         
     }
     

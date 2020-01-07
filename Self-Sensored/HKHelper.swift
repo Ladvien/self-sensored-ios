@@ -10,6 +10,10 @@ import Foundation
 import HealthKit
 import SwiftyJSON
 
+protocol HKQueryDelegate {
+    func queryComplete(results: [Dictionary<String, Any>], identifier: String)
+}
+
 // TODO: Create a delegate protocol for handling
 //       JSON returned from query.
 // https://useyourloaf.com/blog/quick-guide-to-swift-delegates/
@@ -29,6 +33,7 @@ import SwiftyJSON
 class HealthKitHelper {
     
     let healthStore = HKHealthStore()
+    var delegate: HKQueryDelegate?
     
     init(readDataTypes: Set<HKObjectType>, writeDataTypes: Set<HKSampleType>) {
         if HKHealthStore.isHealthDataAvailable() {
@@ -43,7 +48,7 @@ class HealthKitHelper {
     }
     
     // HKSampleQuery with a predicate
-     func queryQuantityTypeByDateRange(activity: HKQuantityTypeIdentifier, queryStartDate: String, queryEndDate: String) {
+    func queryQuantityTypeByDateRange(user_id: Int, activity: HKQuantityTypeIdentifier, queryStartDate: String, queryEndDate: String) {
     
          // Convert string to date.
          let startDate = Date.init(queryStartDate)
@@ -51,44 +56,52 @@ class HealthKitHelper {
          
          let sampleType = HKSampleType.quantityType(forIdentifier: activity)
          let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: HKQueryOptions.strictEndDate)
-         
-         // Prepare JSON array for the data.
-         var json: [JSON] = []
-         
+        
+         var activities = [Dictionary<String, Any>]()
+         var identifier = ""
+        
          // Prepare the query.
          let query = HKSampleQuery.init(sampleType: sampleType!,
                                         predicate: predicate,
                                         limit: HKObjectQueryNoLimit,
                                         sortDescriptors: nil) { (query, results, error) in
+                                        // Unwrap the query results
                                          if let results = results  {
-                                             var index = 0
-                                             print(results.count)
-                                             for result in results as! [HKQuantitySample] {
-                                                 if (index % 100 == 0) {
-                                                     print(index)
-                                                 }
-                                                 json.append(self.HKQuantitySampleToJSON(sample: result))
-                                                 index += 1
-                                                 
+                                            for result in results as! [HKQuantitySample] {
+                                                // Grab the quantity id to add to the packet.
+                                                identifier = result.quantityType.identifier
+                                                // Get the HealthKit data.
+                                                let queryResult = self.HKQuantitySampleToDictionary(sample: result)
+                                                // Prepare the activity and add it to our packet.
+                                                if var activity = queryResult[identifier] as? Dictionary<String, Any> {
+                                                    activity["user_id"] = user_id
+                                                    activities.append(activity)
+                                                }
                                              }
+                                            self.delegate?.queryComplete(results: activities, identifier: identifier)
                                          }
-                                        print(json)
          }
          
          // Execute the query.
          healthStore.execute(query)
      }
     
-    func HKQuantitySampleToJSON(sample: HKQuantitySample?) -> JSON {
+    func HKQuantitySampleToDictionary(sample: HKQuantitySample?) -> Dictionary<String, Any> {
         guard let sample = sample else {
-            let error: JSON = ["error": "Missing sample."]
+            let error = ["error": "Missing sample."]
             return error
         }
-        var packet = sample.toJSON()
-        return packet
+        return sample.toDictionary()
     }
     
 }
+
+//func jsonToParameters(json: JSON) -> Parameters {
+//    var parameters: Parameters = [Int:Dictionary]
+//    for i in 0...json.count {
+//
+//    }
+//}
 
 // Date from String.
 extension Date {
@@ -124,8 +137,8 @@ extension JSON {
 
 // Convert HKDevice to JSON
 extension HKDevice {
-    func toJSON() -> JSON {
-        let deviceJSON: JSON = [
+    func toDictionary() -> Dictionary<String, Any> {
+        let deviceJSON: Dictionary<String, Any> = [
             "name": self.name ?? "Unknown",
             "model": self.model ?? "Unknown",
             "firmware": self.firmwareVersion ?? "Unknown",
@@ -139,13 +152,13 @@ extension HKDevice {
 }
 
 extension HKQuantitySample {
-    func toJSON() -> JSON {
-        let result: JSON = [ self.quantityType.identifier: [
+    func toDictionary() -> Dictionary<String, Any> {
+        let result: Dictionary<String, Any> = [ self.quantityType.identifier: [
             "date": self.startDate.toString(),
             "activity_type": self.sampleType.identifier,
             "quantity_type": self.commonExpressedUnit().unitString,
             "quantity": self.toCommonHKUnit(),
-            "device": self.device?.toJSON() ?? JSON()
+            "device": self.device?.toDictionary() ?? [:]
             ]
         ]
         return result
