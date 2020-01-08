@@ -29,7 +29,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, HKQueryDelegate {
     }
     
     func healthKitStoreStateUpdate(state: HealthKitStoreState) {
-        let activity = HKQuantityTypeIdentifier.heartRate
+        let activity = HKQuantityTypeIdentifier.restingHeartRate
         if state == .ready {
             hkh.queryQuantityTypeByDateRange(user_id: 1, activity: activity, queryStartDate: "2019-11-03", queryEndDate: "2020-01-01")
         } else {
