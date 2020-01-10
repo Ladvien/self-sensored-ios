@@ -17,14 +17,36 @@ var hkh = HealthKitHelper()
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate, HKQueryDelegate {
     
+    var healthQueryResultsIndex = 0
+    var healthQueryResults = [Dictionary<String, Any>]()
+    var healthQueryResultsId = ""
+    
     func queryComplete(results: [Dictionary<String, Any>], identifier: String) {
+        self.healthQueryResults = results
+        self.healthQueryResultsId = identifier
+        sendHealthData()
+    }
+    
+    func sendHealthData() {
+        let url = "http://maddatum.com:3000/activities/\(self.healthQueryResultsId)"
         // Convert to Alamofire parameters.
-        for result in results {
-                    let parameters : Parameters = result
-                    let url = "http://maddatum.com:3000/activities/\(identifier)"
-                    Alamofire.request(url, method: .post, parameters: parameters, encoding: Alamofire.JSONEncoding.default).response { response in
-            //                                                            print(response)
-                    }
+        let parameters : Parameters = self.healthQueryResults[self.healthQueryResultsIndex]
+        
+        // Attempt to post data.
+        Alamofire.request(url, method: .post, parameters: parameters, encoding: Alamofire.JSONEncoding.default).validate().responseJSON { response in
+            if response.response?.statusCode == 200 {
+                self.healthQueryResultsIndex += 1
+                if self.healthQueryResultsIndex < self.healthQueryResults.count {
+                    // If there's more data, recurse.
+                    self.sendHealthData()
+                } else {
+                    // If all data is sent, exit recursion.
+                    self.healthQueryResultsIndex = 0
+                    print("All done")
+                }
+            } else {
+                print("Big fat fail")
+            }
         }
     }
     
