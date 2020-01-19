@@ -24,7 +24,8 @@ var hkh = HealthKitHelper()
 var sss = SelfSensoredServer()
 
 class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate, ObservableObject {
-
+    
+    @Published var action = "Ready"
     @Published var activityId = "None"
     @Published var queryStartDate = ""
     @Published var queryEndDate = ""
@@ -39,7 +40,12 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
     let dataTypes : Array = [
                             HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.heartRate)!,
                             HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.restingHeartRate)!,
-                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.stepCount)!
+                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.stepCount)!,
+                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodPressureSystolic)!,
+                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodPressureDiastolic)!,
+                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyMass)!
+                            
+                            
     ]
     
     var readDataTypes: Set<HKObjectType>
@@ -68,23 +74,36 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
     }
     
     func queryComplete(results: [Dictionary<String, Any>], identifier: String) {
+        DispatchQueue.main.async {
+            self.action = "Queueing Data"
+        }
         sss.queueDataToSend(dataId: identifier, data: results)
     }
     
     // CALLBACKS: SelfSensoredServer.
-    func completedSendingData() {
-        print("Completed sending data")
+    func dataQueuedToSend(queueId: String, data: SelfSensoredData) {
+        DispatchQueue.main.async {
+            self.action = "Sending Data"
+        }
+        sss.send(data: data)
+        print("Queued data to send: \(queueId)")
     }
     
-    func dataQueuedToSend(queueId: String) {
-        sss.send(queueId: queueId)
-        print("Queued data to send: \(queueId)")
+    func completedSendingData() {
+        print("Completed sending data")
+        self.queryTypeIndex += 1
+        queryNextItem()
+    }
+    
+    func sendingDataToServerUpdate(queueId: String, index: Int, total: Int) {
+        DispatchQueue.main.async {
+            self.itemPercentageSynced = self.getSyncedPercentage(index: total - index, total: total)
+        }
     }
     
     // DataHandler
     func queryNextItem() {
-        
-        if self.queryTypeIndex == self.dataTypes.count - 1 {
+        if self.queryTypeIndex == self.dataTypes.count {
             self.queryTypeIndex = 0
             print("All done")
             return
@@ -103,6 +122,7 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
                 self.queryEndDate = today.toFormat("yyyy-MM-dd")
             }
             hkh.queryQuantityTypeByDateRange(user_id: 1, activity: activity, queryStartDate: date, queryEndDate: today)
+            self.action = "Querying"
         })
     }
     

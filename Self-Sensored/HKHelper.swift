@@ -148,7 +148,6 @@ extension HKDevice {
 
 extension HKQuantitySample {
     func toDictionary() -> Dictionary<String, Any> {
-        print(self.startDate.toISO())
         let result: Dictionary<String, Any> = [ self.quantityType.identifier: [
             "date": self.startDate.toISO(),
             "activity_type": self.sampleType.identifier,
@@ -171,6 +170,12 @@ extension HKQuantitySample {
     func commonExpressedUnit() -> HKUnit {
         var unitType:HKUnit = HKUnit.count()
         switch self.quantityType.identifier {
+        case HKQuantityTypeIdentifier.bodyMass.rawValue:
+            unitType = HKUnit.pound()
+        case HKQuantityTypeIdentifier.bloodPressureDiastolic.rawValue:
+            unitType = HKUnit.pascalUnit(with: HKMetricPrefix.milli)
+        case HKQuantityTypeIdentifier.bloodPressureSystolic.rawValue:
+            unitType = HKUnit.pascalUnit(with: HKMetricPrefix.milli)
         case HKQuantityTypeIdentifier.stepCount.rawValue:
             unitType = HKUnit.count()
             break

@@ -12,13 +12,14 @@ import SwiftyJSON
 
 protocol SelfSensoredServerDelegate {
     func completedSendingData()
-    func dataQueuedToSend(queueId: String)
+    func dataQueuedToSend(queueId: String, data: SelfSensoredData)
+    func sendingDataToServerUpdate(queueId: String, index: Int, total: Int)
 }
 
 class SelfSensoredServer {
     
     var delegate: SelfSensoredServerDelegate?
-    var dataQueuedToSend: [String:[Parameters]] = [:]
+    var dataQueuedToSend: [String:SelfSensoredData] = [:]
     
     init() {
 
@@ -36,7 +37,6 @@ class SelfSensoredServer {
                     let date = JSON(json["success"]).stringValue
                     completionHandler(date.toDate()?.date ?? "2019-12-31".toDate()!.date, "")
                 case .failure(let error):
-                    print(error)
                     completionHandler("2019-12-31".toDate()!.date, "error")
                     break
             }
@@ -44,10 +44,10 @@ class SelfSensoredServer {
     }
     
     func queueDataToSend(dataId: String, data: [Dictionary<String, Any>]) {
-        print(dataId)
         let parameters = dataToParametersArray(data: data)
-        dataQueuedToSend[dataId] = parameters
-        delegate?.dataQueuedToSend(queueId: dataId)
+        let data = SelfSensoredData(id: dataId, parameters: parameters)
+        dataQueuedToSend[dataId] = data
+        delegate?.dataQueuedToSend(queueId: dataId, data: data)
     }
     
     func dataToParametersArray(data: [Dictionary<String, Any>]) -> [Parameters] {
@@ -58,21 +58,22 @@ class SelfSensoredServer {
         return dataAsParameters
     }
     
-    func send(queueId: String) {
-        let url = "http://maddatum.com:3000/activities/\(queueId)"
-        if let firstEntry = dataQueuedToSend[queueId]?.first {
+    func send(data: SelfSensoredData) {
+        let url = "http://maddatum.com:3000/activities/\(data.id)"
+        if let firstEntry = data.data.first {
             Alamofire.request(url, method: .post, parameters: firstEntry, encoding: Alamofire.JSONEncoding.default).validate().responseJSON { response in
                 if response.response?.statusCode == 200 {
-                        self.dataQueuedToSend[queueId]?.removeFirst()
-                        self.send(queueId: queueId)
+                    self.delegate?.sendingDataToServerUpdate(queueId: data.id, index: data.data.count, total: data.totalItems)
+                    data.data.removeFirst()
+                    self.send(data: data)
                 } else {
                     print("Failed request.")
+                    self.send(data: data)
                 }
             }
         } else {
             self.delegate?.completedSendingData()
         }
-
     }
     
 }

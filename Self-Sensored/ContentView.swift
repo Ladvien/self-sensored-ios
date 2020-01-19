@@ -17,10 +17,11 @@ struct ContentView: View {
     
     var body: some View {
         VStack() {
-            Text(String("Querying: \(dataHandler.activityId.replacingOccurrences(of: "HKQuantityTypeIdentifier", with: ""))"))
-            Text(String("Between \(dataHandler.queryStartDate) and \(dataHandler.queryEndDate)"))
-            Text(String("Item " + String(dataHandler.itemPercentageSynced) + "%"))
             Text("Total " + String(dataHandler.totalPercentageSynced) + "%")
+            Text(String("\(dataHandler.action): \(dataHandler.activityId.replacingOccurrences(of: "HKQuantityTypeIdentifier", with: ""))"))
+            Text("From: " + dataHandler.queryStartDate)
+            Text("To: " + dataHandler.queryEndDate)
+            Text(String("Complete: " + String(dataHandler.itemPercentageSynced) + "%"))
         }
     }
 }

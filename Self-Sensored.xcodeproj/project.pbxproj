@@ -13,6 +13,7 @@
 		6A64630323CB5502009B96D2 /* DataHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A64630223CB5502009B96D2 /* DataHandler.swift */; };
 		6A64630623CF3927009B96D2 /* SwiftDate in Frameworks */ = {isa = PBXBuildFile; productRef = 6A64630523CF3927009B96D2 /* SwiftDate */; };
 		6A64630823D33DAF009B96D2 /* SelfSensoredServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A64630723D33DAF009B96D2 /* SelfSensoredServer.swift */; };
+		6A64630E23D48992009B96D2 /* SelfSensoredData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A64630D23D48992009B96D2 /* SelfSensoredData.swift */; };
 		6A74190023B8D92300518B1D /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A7418FF23B8D92300518B1D /* HealthKit.framework */; };
 		6A74190223B8D92800518B1D /* HealthKitUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A74190123B8D92800518B1D /* HealthKitUI.framework */; };
 		6AE3F19723B8D1110084F56F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE3F19623B8D1110084F56F /* AppDelegate.swift */; };
@@ -29,6 +30,7 @@
 		6A0EC3C023B8E38600DD4747 /* Self-Sensored.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Self-Sensored.entitlements"; sourceTree = "<group>"; };
 		6A64630223CB5502009B96D2 /* DataHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataHandler.swift; sourceTree = "<group>"; };
 		6A64630723D33DAF009B96D2 /* SelfSensoredServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfSensoredServer.swift; sourceTree = "<group>"; };
+		6A64630D23D48992009B96D2 /* SelfSensoredData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfSensoredData.swift; sourceTree = "<group>"; };
 		6A7418FF23B8D92300518B1D /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
 		6A74190123B8D92800518B1D /* HealthKitUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKitUI.framework; path = System/Library/Frameworks/HealthKitUI.framework; sourceTree = SDKROOT; };
 		6AE3F19323B8D1110084F56F /* Self-Sensored.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Self-Sensored.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -94,6 +96,7 @@
 				6AE3F19D23B8D1110084F56F /* ContentView.swift */,
 				6A64630223CB5502009B96D2 /* DataHandler.swift */,
 				6A64630723D33DAF009B96D2 /* SelfSensoredServer.swift */,
+				6A64630D23D48992009B96D2 /* SelfSensoredData.swift */,
 				6AE3F19F23B8D1130084F56F /* Assets.xcassets */,
 				6AE3F1A423B8D1130084F56F /* LaunchScreen.storyboard */,
 				6AE3F1A723B8D1130084F56F /* Info.plist */,
@@ -192,6 +195,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6A64630E23D48992009B96D2 /* SelfSensoredData.swift in Sources */,
 				6A64630823D33DAF009B96D2 /* SelfSensoredServer.swift in Sources */,
 				6AE3F19723B8D1110084F56F /* AppDelegate.swift in Sources */,
 				6AE3F19923B8D1110084F56F /* SceneDelegate.swift in Sources */,
