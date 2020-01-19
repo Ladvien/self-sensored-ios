@@ -16,7 +16,12 @@ struct ContentView: View {
     @ObservedObject var dataHandler = DataHandler()
     
     var body: some View {
-        Text(String(dataHandler.percentageSynced) + "%")
+        VStack() {
+            Text(String("Querying: \(dataHandler.activityId.replacingOccurrences(of: "HKQuantityTypeIdentifier", with: ""))"))
+            Text(String("Between \(dataHandler.queryStartDate) and \(dataHandler.queryEndDate)"))
+            Text(String("Item " + String(dataHandler.itemPercentageSynced) + "%"))
+            Text("Total " + String(dataHandler.totalPercentageSynced) + "%")
+        }
     }
 }
 

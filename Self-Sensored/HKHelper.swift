@@ -9,10 +9,12 @@
 import Foundation
 import HealthKit
 import SwiftyJSON
+import SwiftDate
 
 protocol HKQueryDelegate {
     func queryComplete(results: [Dictionary<String, Any>], identifier: String)
     func healthKitStoreStateUpdate(state: HealthKitStoreState)
+    func queryUpdate(itemNumber: Int, totalItems: Int)
 }
 
 enum HealthKitStoreState {
@@ -58,15 +60,23 @@ class HealthKitHelper {
         }
     }
     
-    // HKSampleQuery with a predicate
-    func queryQuantityTypeByDateRange(user_id: Int, activity: HKQuantityTypeIdentifier, queryStartDate: String, queryEndDate: String) {
+    func requestReadingAuthorizationForAllDataTypes(typesToRead: Set<HKObjectType>) {
+        if HKHealthStore.isHealthDataAvailable() {
+            healthStore.requestAuthorization(toShare: [], read: typesToRead) { (success, error) in
+                if success {
+                    self.healthKitStoreState = .ready
+                } else {
+                    self.healthKitStoreState = .notAuthorized
+                }
+                self.delegate?.healthKitStoreStateUpdate(state: self.healthKitStoreState)
+            }
+        }
+    }
     
-         // Convert string to date.
-         let startDate = Date.init(queryStartDate)
-         let endDate = Date.init(queryEndDate)
-         
+    // HKSampleQuery with a predicate
+    func queryQuantityTypeByDateRange(user_id: Int, activity: HKQuantityTypeIdentifier, queryStartDate: Date, queryEndDate: Date) {
          let sampleType = HKSampleType.quantityType(forIdentifier: activity)
-         let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: HKQueryOptions.strictEndDate)
+         let predicate = HKQuery.predicateForSamples(withStart: queryStartDate, end: queryEndDate, options: HKQueryOptions.strictEndDate)
         
          var activities = [Dictionary<String, Any>]()
          var identifier = ""
@@ -87,6 +97,7 @@ class HealthKitHelper {
                                                 if var activity = queryResult[identifier] as? Dictionary<String, Any> {
                                                     activity["user_id"] = user_id
                                                     activities.append(activity)
+                                                    self.delegate?.queryUpdate(itemNumber: activities.count, totalItems: results.count)
                                                 }
                                              }
                                             self.delegate?.queryComplete(results: activities, identifier: identifier)
@@ -105,33 +116,6 @@ class HealthKitHelper {
         return sample.toDictionary()
     }
     
-}
-
-//func jsonToParameters(json: JSON) -> Parameters {
-//    var parameters: Parameters = [Int:Dictionary]
-//    for i in 0...json.count {
-//
-//    }
-//}
-
-// Date from String.
-extension Date {
-    init(_ dateString:String) {
-        let dateStringFormatter = DateFormatter()
-        dateStringFormatter.dateFormat = "yyyy-MM-dd"
-        dateStringFormatter.locale = NSLocale(localeIdentifier: "en_US_POSIX") as Locale
-        let date = dateStringFormatter.date(from: dateString)!
-        self.init(timeInterval:0, since:date)
-    }
-}
-
-// Date to String
-extension Date {
-    func toString() -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ssZZZ"
-        return dateFormatter.string(from: self)
-    }
 }
 
 // JSON to String
@@ -164,8 +148,9 @@ extension HKDevice {
 
 extension HKQuantitySample {
     func toDictionary() -> Dictionary<String, Any> {
+        print(self.startDate.toISO())
         let result: Dictionary<String, Any> = [ self.quantityType.identifier: [
-            "date": self.startDate.toString(),
+            "date": self.startDate.toISO(),
             "activity_type": self.sampleType.identifier,
             "quantity_type": self.commonExpressedUnit().unitString,
             "quantity": self.toCommonHKUnit(),
@@ -204,5 +189,15 @@ extension HKQuantitySample {
             break
         }
         return unitType
+    }
+    
+    func allHKQuantityTypes() -> Set<HKObjectType> {
+        let set: Set = [
+                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.heartRate)!,
+                HKObjectType.characteristicType(forIdentifier: HKCharacteristicTypeIdentifier.biologicalSex)!,
+                HKObjectType.characteristicType(forIdentifier: HKCharacteristicTypeIdentifier.dateOfBirth)!,
+                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyMass)!
+        ]
+        return set
     }
 }

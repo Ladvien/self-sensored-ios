@@ -10,73 +10,100 @@ import SwiftUI
 import Combine
 import Alamofire
 import HealthKit
+import SwiftyJSON
+import SwiftDate
+
+// Order of exec.
+// 1. requestReadingAuthorizationForAllDataTypes
+// 2. healthKitStoreStateUpdate
+// 3. queryNextItem
+// 4. hkh.queryQuantityTypeByDateRange
+// 5. hkh.queryComplete
 
 var hkh = HealthKitHelper()
+var sss = SelfSensoredServer()
 
-class DataHandler: HealthKitHelper, HKQueryDelegate, ObservableObject {
+class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate, ObservableObject {
+
+    @Published var activityId = "None"
+    @Published var queryStartDate = ""
+    @Published var queryEndDate = ""
+    @Published var itemPercentageSynced = 0.0
+    @Published var totalPercentageSynced = 0.0
     
-    @Published var percentageSynced = 0.0
-    
+    var queryTypeIndex = 0
     var healthQueryResultsIndex = 0
     var healthQueryResults = [Dictionary<String, Any>]()
     var healthQueryResultsId = ""
     
+    let dataTypes : Array = [
+                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.heartRate)!,
+                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.restingHeartRate)!,
+                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.stepCount)!
+    ]
+    
+    var readDataTypes: Set<HKObjectType>
+    
     override init() {
+        readDataTypes = Set(dataTypes)
         super.init()
         hkh.delegate = self
-        
-        let activity = HKQuantityTypeIdentifier.heartRate
-        
-        let readDataTypes : Set = [HKObjectType.quantityType(forIdentifier: activity)!,
-                                   HKObjectType.characteristicType(forIdentifier: HKCharacteristicTypeIdentifier.biologicalSex)!,
-                                   HKObjectType.characteristicType(forIdentifier: HKCharacteristicTypeIdentifier.dateOfBirth)!,
-                                   HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyMass)!]
-        
-        let writeDataTypes : Set = [HKObjectType.quantityType(forIdentifier: activity)!]
-
-        
-        hkh.requestDataTypesAuthorization(readDataTypes: readDataTypes, writeDataTypes: writeDataTypes)
+        sss.delegate = self
+        hkh.requestReadingAuthorizationForAllDataTypes(typesToRead: readDataTypes)
     }
     
-    func queryComplete(results: [Dictionary<String, Any>], identifier: String) {
-        self.healthQueryResults = results
-        self.healthQueryResultsId = identifier
-        sendHealthData()
-    }
-    
-    func sendHealthData() {
-        
-        // If all data is sent, exit recursion.
-        if self.healthQueryResultsIndex == self.healthQueryResults.count - 1 {
-            print("All done")
-            self.healthQueryResultsIndex = 0
-            return
-        }
-        
-        let url = "http://maddatum.com:3000/activities/\(self.healthQueryResultsId)"
-        // Convert to Alamofire parameters.
-        let parameters : Parameters = self.healthQueryResults[self.healthQueryResultsIndex]
-        
-        // Attempt to post data.
-        Alamofire.request(url, method: .post, parameters: parameters, encoding: Alamofire.JSONEncoding.default).validate().responseJSON { response in
-            if response.response?.statusCode == 200 {
-                self.healthQueryResultsIndex += 1
-                self.percentageSynced = Double(self.getSyncedPercentage(index: self.healthQueryResultsIndex, total: self.healthQueryResults.count))
-                // If there's more data, recurse.
-                self.sendHealthData()
-            } else {
-                print("Big fat fail")
-            }
-        }
-    }
-    
+    // CALLBACKS: HealthKitHelper.
     func healthKitStoreStateUpdate(state: HealthKitStoreState) {
-        let activity = HKQuantityTypeIdentifier.heartRate
         if state == .ready {
-            hkh.queryQuantityTypeByDateRange(user_id: 1, activity: activity, queryStartDate: "2019-11-03", queryEndDate: "2020-01-01")
+            queryNextItem()
         } else {
             print("Not authorized")
         }
+    }
+    
+    func queryUpdate(itemNumber: Int, totalItems: Int) {
+        DispatchQueue.main.async {
+            self.itemPercentageSynced = self.getSyncedPercentage(index: itemNumber, total: totalItems)
+        }
+    }
+    
+    func queryComplete(results: [Dictionary<String, Any>], identifier: String) {
+        sss.queueDataToSend(dataId: identifier, data: results)
+    }
+    
+    // CALLBACKS: SelfSensoredServer.
+    func completedSendingData() {
+        print("Completed sending data")
+    }
+    
+    func dataQueuedToSend(queueId: String) {
+        sss.send(queueId: queueId)
+        print("Queued data to send: \(queueId)")
+    }
+    
+    // DataHandler
+    func queryNextItem() {
+        
+        if self.queryTypeIndex == self.dataTypes.count - 1 {
+            self.queryTypeIndex = 0
+            print("All done")
+            return
+        }
+        
+        let activity = HKQuantityTypeIdentifier(rawValue: self.dataTypes[self.queryTypeIndex].identifier)
+        
+        DispatchQueue.main.async {
+            self.activityId = self.dataTypes[self.queryTypeIndex].identifier
+        }
+        
+        sss.latestDateOfActivity(user_id: String(1), activity: dataTypes[queryTypeIndex].identifier, completionHandler: { date, error in
+            let today = Date()
+            DispatchQueue.main.async {
+                self.queryStartDate = date.toFormat("yyyy-MM-dd")
+                self.queryEndDate = today.toFormat("yyyy-MM-dd")
+            }
+            hkh.queryQuantityTypeByDateRange(user_id: 1, activity: activity, queryStartDate: date, queryEndDate: today)
+        })
     }
     
     func getSyncedPercentage(index: Int, total: Int) -> Double {
