@@ -35,9 +35,9 @@ class SelfSensoredServer {
                 case .success(let value):
                     let json = JSON(value)
                     let date = JSON(json["success"]).stringValue
-                    completionHandler(date.toDate()?.date ?? "2019-12-31".toDate()!.date, "")
+                    completionHandler(date.toDate()?.date ?? "2000-12-31".toDate()!.date, "")
                 case .failure(let error):
-                    completionHandler("2019-12-31".toDate()!.date, "error")
+                    completionHandler("2000-12-31".toDate()!.date, "error")
                     break
             }
         }

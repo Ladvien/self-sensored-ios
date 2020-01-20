@@ -116,6 +116,18 @@ class HealthKitHelper {
         return sample.toDictionary()
     }
     
+    public func getAllHKQuantityTypes() -> Array<HKObjectType> {
+        let dataTypes : Array = [
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.heartRate)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.restingHeartRate)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.stepCount)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodPressureSystolic)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodPressureDiastolic)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyMass)!
+        ]
+        return dataTypes
+    }
+    
 }
 
 // JSON to String
@@ -194,15 +206,5 @@ extension HKQuantitySample {
             break
         }
         return unitType
-    }
-    
-    func allHKQuantityTypes() -> Set<HKObjectType> {
-        let set: Set = [
-                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.heartRate)!,
-                HKObjectType.characteristicType(forIdentifier: HKCharacteristicTypeIdentifier.biologicalSex)!,
-                HKObjectType.characteristicType(forIdentifier: HKCharacteristicTypeIdentifier.dateOfBirth)!,
-                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyMass)!
-        ]
-        return set
     }
 }

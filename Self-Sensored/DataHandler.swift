@@ -32,21 +32,14 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
     @Published var itemPercentageSynced = 0.0
     @Published var totalPercentageSynced = 0.0
     
+    var yearsToSyncRange: [(Date, Date)]?
+    
     var queryTypeIndex = 0
     var healthQueryResultsIndex = 0
     var healthQueryResults = [Dictionary<String, Any>]()
     var healthQueryResultsId = ""
     
-    let dataTypes : Array = [
-                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.heartRate)!,
-                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.restingHeartRate)!,
-                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.stepCount)!,
-                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodPressureSystolic)!,
-                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodPressureDiastolic)!,
-                            HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyMass)!
-                            
-                            
-    ]
+    let dataTypes = hkh.getAllHKQuantityTypes()
     
     var readDataTypes: Set<HKObjectType>
     
@@ -55,6 +48,7 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
         super.init()
         hkh.delegate = self
         sss.delegate = self
+        yearsToSyncRange! = createArrayOfDates(numberOfYearsPast: 20)
         hkh.requestReadingAuthorizationForAllDataTypes(typesToRead: readDataTypes)
     }
     
@@ -102,7 +96,22 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
     }
     
     // DataHandler
-    func queryNextItem() {
+    func queryNextYear() {
+        
+        if let yearsToSyncRange = yearsToSyncRange {
+            if !yearsToSyncRange.isEmpty {
+                let year = yearsToSyncRange.first!
+                queryNextItem(startDate: year.0, endDate: year.1)
+                return
+            } else {
+                print("Finished syncing all years.")
+            }
+        }
+        print("Unable to find dates to sync.")
+    }
+    
+    
+    func queryNextItem(startDate: Date, endDate: Date) {
         if self.queryTypeIndex == self.dataTypes.count {
             self.queryTypeIndex = 0
             print("All done")
@@ -130,6 +139,29 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
         if total == 0 { return 0.0 }
         let result = Double(index) / Double(total) * 100
         return Double(round(1000*result) / 1000)
+    }
+    
+    func createArrayOfDates(numberOfYearsPast: Int) -> [(Date, Date)] {
+        var dates = [(Date(), Date())]
+        for index in (0...numberOfYearsPast).reversed() {
+            let calendar = Calendar.current
+            let year = calendar.component(.year, from: Date()) - index
+            let startDate = createDateForRange(year: year, month: 1, day: 1)
+            let endDate = createDateForRange(year: year, month: 12, day: 31)
+            dates.append((startDate, endDate))
+        }
+        return dates
+    }
+    
+    func createDateForRange(year: Int, month: Int, day: Int) -> Date {
+        var dateComponents = DateComponents()
+        dateComponents.year = year
+        dateComponents.month = month
+        dateComponents.day = day
+        
+        let userCalendar = Calendar.current // user calendar
+        let someDateTime = userCalendar.date(from: dateComponents)
+        return someDateTime!
     }
     
 }
