@@ -7,16 +7,16 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "18218026-5B1A-4585-85F9-AD280DDFFA45"
+            uuid = "7B071B6C-1642-4CE2-889C-23AE80BD2E8C"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "Self-Sensored/DataHandler.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "94"
-            endingLineNumber = "94"
-            landmarkName = "sendingDataToServerUpdate(queueId:index:total:)"
+            startingLineNumber = "103"
+            endingLineNumber = "103"
+            landmarkName = "allActivitiesHaveBeenQueried()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

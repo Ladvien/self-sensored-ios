@@ -22,8 +22,9 @@ import SwiftDate
 
 var hkh = HealthKitHelper()
 var sss = SelfSensoredServer()
+var sync = SelfSensoredSyncState(numberOfYearsPast: 20)
 
-class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate, ObservableObject {
+class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate, SelfSensoredSyncStateDelegate, ObservableObject {
     
     @Published var action = "Ready"
     @Published var activityId = "None"
@@ -32,23 +33,17 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
     @Published var itemPercentageSynced = 0.0
     @Published var totalPercentageSynced = 0.0
     
-    var yearsToSyncRange: [(Date, Date)]?
-    
-    var queryTypeIndex = 0
-    var healthQueryResultsIndex = 0
+
     var healthQueryResults = [Dictionary<String, Any>]()
     var healthQueryResultsId = ""
     
-    let dataTypes = hkh.getAllHKQuantityTypes()
-    
-    var readDataTypes: Set<HKObjectType>
+    var readDataTypes: Set<HKObjectType> = Set(hkh.getAllHKQuantityTypes())
     
     override init() {
-        readDataTypes = Set(dataTypes)
         super.init()
         hkh.delegate = self
         sss.delegate = self
-        yearsToSyncRange! = createArrayOfDates(numberOfYearsPast: 20)
+        sync.delegate = self
         hkh.requestReadingAuthorizationForAllDataTypes(typesToRead: readDataTypes)
     }
     
@@ -76,16 +71,20 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
     
     // CALLBACKS: SelfSensoredServer.
     func dataQueuedToSend(queueId: String, data: SelfSensoredData) {
-        DispatchQueue.main.async {
-            self.action = "Sending Data"
+        if data.totalItems > 0 {
+            DispatchQueue.main.async {
+                self.action = "Sending Data"
+            }
+            sss.send(data: data)
+            print("Queued data to send: \(queueId)")
+        } else {
+            queryNextItem()
         }
-        sss.send(data: data)
-        print("Queued data to send: \(queueId)")
+        
     }
     
     func completedSendingData() {
         print("Completed sending data")
-        self.queryTypeIndex += 1
         queryNextItem()
     }
     
@@ -95,44 +94,40 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
         }
     }
     
-    // DataHandler
-    func queryNextYear() {
-        
-        if let yearsToSyncRange = yearsToSyncRange {
-            if !yearsToSyncRange.isEmpty {
-                let year = yearsToSyncRange.first!
-                queryNextItem(startDate: year.0, endDate: year.1)
-                return
-            } else {
-                print("Finished syncing all years.")
-            }
-        }
-        print("Unable to find dates to sync.")
+    // CALLBACKS: SelfSensoredSyncState
+    func allDatesHaveBeenQueried() {
+        print("Here")
+    }
+    
+    func allActivitiesHaveBeenQueried() {
+        print("All activities have been queried")
+        sync.getNextDateRangeToSync()
     }
     
     
-    func queryNextItem(startDate: Date, endDate: Date) {
-        if self.queryTypeIndex == self.dataTypes.count {
-            self.queryTypeIndex = 0
-            print("All done")
-            return
-        }
+    // DataHandler
+    func queryNextItem() {
         
-        let activity = HKQuantityTypeIdentifier(rawValue: self.dataTypes[self.queryTypeIndex].identifier)
-        
-        DispatchQueue.main.async {
-            self.activityId = self.dataTypes[self.queryTypeIndex].identifier
-        }
-        
-        sss.latestDateOfActivity(user_id: String(1), activity: dataTypes[queryTypeIndex].identifier, completionHandler: { date, error in
-            let today = Date()
+        if let reportRange = sync.getCurrentDateRangeToSync() {
+            
+            let currentActivityId = sync.getCurrentActivityToSync().identifier
+            sync.nextActivityToSync()
+            
             DispatchQueue.main.async {
-                self.queryStartDate = date.toFormat("yyyy-MM-dd")
-                self.queryEndDate = today.toFormat("yyyy-MM-dd")
+                self.activityId = currentActivityId
             }
-            hkh.queryQuantityTypeByDateRange(user_id: 1, activity: activity, queryStartDate: date, queryEndDate: today)
-            self.action = "Querying"
-        })
+
+            sss.latestDateOfActivity(user_id: String(1), activity: currentActivityId, completionHandler: { date, error in
+
+                DispatchQueue.main.async {
+                    self.queryStartDate = reportRange.0.toString()
+                    self.queryEndDate = reportRange.1.toString()
+                }
+                hkh.queryQuantityTypeByDateRange(user_id: 1, activity: HKQuantityTypeIdentifier(rawValue: currentActivityId), queryStartDate: reportRange.0, queryEndDate: reportRange.1)
+                self.action = "Querying"
+            })
+        }
+
     }
     
     func getSyncedPercentage(index: Int, total: Int) -> Double {
@@ -141,27 +136,6 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
         return Double(round(1000*result) / 1000)
     }
     
-    func createArrayOfDates(numberOfYearsPast: Int) -> [(Date, Date)] {
-        var dates = [(Date(), Date())]
-        for index in (0...numberOfYearsPast).reversed() {
-            let calendar = Calendar.current
-            let year = calendar.component(.year, from: Date()) - index
-            let startDate = createDateForRange(year: year, month: 1, day: 1)
-            let endDate = createDateForRange(year: year, month: 12, day: 31)
-            dates.append((startDate, endDate))
-        }
-        return dates
-    }
-    
-    func createDateForRange(year: Int, month: Int, day: Int) -> Date {
-        var dateComponents = DateComponents()
-        dateComponents.year = year
-        dateComponents.month = month
-        dateComponents.day = day
-        
-        let userCalendar = Calendar.current // user calendar
-        let someDateTime = userCalendar.date(from: dateComponents)
-        return someDateTime!
-    }
+
     
 }
