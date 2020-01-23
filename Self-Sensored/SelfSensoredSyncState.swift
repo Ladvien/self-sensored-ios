@@ -18,27 +18,38 @@ class SelfSensoredSyncState {
     
     var delegate: SelfSensoredSyncStateDelegate?
     
+    internal var ssServer: SelfSensoredServer
+    
     internal var yearsToSyncRange: [(Date, Date)]
-    internal let activitiesToSync = hkh.getAllHKQuantityTypes()
+    internal var activitiesToSync: Array<HKObjectType> = []
+    internal var latestActivityDate: Dictionary<HKObjectType, Date> = [:]
     internal var activitiesIndex = 0
     
     internal var currentDateRange: (Date, Date)
     
     
-    init(numberOfYearsPast: Int) {
-        yearsToSyncRange = SelfSensoredSyncState.createArrayOfDates(numberOfYearsPast: numberOfYearsPast)
-        currentDateRange = yearsToSyncRange.first!
+    init(selfSensoredServer: SelfSensoredServer, numberOfYearsPast: Int, activities: Array<HKObjectType>) {
+        self.yearsToSyncRange = SelfSensoredSyncState.createArrayOfDates(numberOfYearsPast: numberOfYearsPast)
+        self.currentDateRange = yearsToSyncRange.first!
+        self.activitiesToSync = activities
+        self.ssServer = selfSensoredServer
     }
     
     // Static Funcs
     internal static func createArrayOfDates(numberOfYearsPast: Int) -> [(Date, Date)] {
         var dates: Array<(Date, Date)> = []
+        
+        // For each year
         for index in (0...numberOfYearsPast).reversed() {
             let calendar = Calendar.current
             let year = calendar.component(.year, from: Date()) - index
-            let startDate = createDateForRange(year: year, month: 1, day: 1)
-            let endDate = createDateForRange(year: year, month: 12, day: 31)
-            dates.append((startDate, endDate))
+            
+            // Get each month
+            for monthIndex in 1...12 {
+                let startDate = createDateForRange(year: year, month: monthIndex, day: 1)
+                let endDate = startDate.dateByAdding(1, .month).dateByAdding(-1, .day).date
+                dates.append((startDate, endDate))
+            }
         }
         return dates
     }
@@ -52,6 +63,10 @@ class SelfSensoredSyncState {
         let userCalendar = Calendar.current // user calendar
         let someDateTime = userCalendar.date(from: dateComponents)
         return someDateTime!
+    }
+    
+    public func populateLatestDateForActivities() {
+        
     }
     
     // Funcs

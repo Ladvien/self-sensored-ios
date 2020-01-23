@@ -20,16 +20,16 @@ import SwiftDate
 // 4. hkh.queryQuantityTypeByDateRange
 // 5. hkh.queryComplete
 
-var hkh = HealthKitHelper()
+var hkh = SelfSensoredHealthKitHelper()
 var sss = SelfSensoredServer()
-var sync = SelfSensoredSyncState(numberOfYearsPast: 20)
+var sync = SelfSensoredSyncState(selfSensoredServer: sss, numberOfYearsPast: 10, activities: hkh.getAllHKQuantityTypes())
 
-class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate, SelfSensoredSyncStateDelegate, ObservableObject {
+class DataHandler: SelfSensoredHealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate, SelfSensoredSyncStateDelegate, ObservableObject {
     
     @Published var action = "Ready"
     @Published var activityId = "None"
-    @Published var queryStartDate = ""
-    @Published var queryEndDate = ""
+    @Published var queryDate = ""
+    @Published var queryMonth = ""
     @Published var itemPercentageSynced = 0.0
     @Published var totalPercentageSynced = 0.0
     
@@ -64,7 +64,7 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
     
     func queryComplete(results: [Dictionary<String, Any>], identifier: String) {
         DispatchQueue.main.async {
-            self.action = "Queueing Data"
+            self.action = "Queueing"
         }
         sss.queueDataToSend(dataId: identifier, data: results)
     }
@@ -73,7 +73,7 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
     func dataQueuedToSend(queueId: String, data: SelfSensoredData) {
         if data.totalItems > 0 {
             DispatchQueue.main.async {
-                self.action = "Sending Data"
+                self.action = "Sending"
             }
             sss.send(data: data)
             print("Queued data to send: \(queueId)")
@@ -115,16 +115,20 @@ class DataHandler: HealthKitHelper, HKQueryDelegate, SelfSensoredServerDelegate,
             
             DispatchQueue.main.async {
                 self.activityId = currentActivityId
+                self.queryDate = String(reportRange.0.year)
+                self.queryMonth = String(reportRange.0.month)
             }
 
             sss.latestDateOfActivity(user_id: String(1), activity: currentActivityId, completionHandler: { date, error in
-
-                DispatchQueue.main.async {
-                    self.queryStartDate = reportRange.0.toString()
-                    self.queryEndDate = reportRange.1.toString()
+                
+                // If the most recent item is less than
+                // the Report End Date.
+                if date < reportRange.1 {
+                    hkh.queryQuantityTypeByDateRange(user_id: 1, activity: HKQuantityTypeIdentifier(rawValue: currentActivityId), queryStartDate: reportRange.0, queryEndDate: reportRange.1)
+                    self.action = "Querying"
+                } else {
+                    self.queryNextItem()
                 }
-                hkh.queryQuantityTypeByDateRange(user_id: 1, activity: HKQuantityTypeIdentifier(rawValue: currentActivityId), queryStartDate: reportRange.0, queryEndDate: reportRange.1)
-                self.action = "Querying"
             })
         }
 

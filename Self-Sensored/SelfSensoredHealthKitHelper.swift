@@ -39,7 +39,7 @@ enum HealthKitStoreState {
 
 
 
-class HealthKitHelper {
+class SelfSensoredHealthKitHelper {
     
     let healthStore = HKHealthStore()
     var delegate: HKQueryDelegate?
