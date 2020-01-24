@@ -50,7 +50,7 @@ class DataHandler: SelfSensoredHealthKitHelper, HKQueryDelegate, SelfSensoredSer
     // CALLBACKS: HealthKitHelper.
     func healthKitStoreStateUpdate(state: HealthKitStoreState) {
         if state == .ready {
-            queryNextItem()
+            sync.populateLatestDateForActivities(user_id: 1)
         } else {
             print("Not authorized")
         }
@@ -95,6 +95,11 @@ class DataHandler: SelfSensoredHealthKitHelper, HKQueryDelegate, SelfSensoredSer
     }
     
     // CALLBACKS: SelfSensoredSyncState
+    func populatedLatestDates(latestDates: Dictionary<HKObjectType, Date>) {
+        print(latestDates)
+        queryNextItem()
+    }
+    
     func allDatesHaveBeenQueried() {
         print("Here")
     }
@@ -110,21 +115,28 @@ class DataHandler: SelfSensoredHealthKitHelper, HKQueryDelegate, SelfSensoredSer
         
         if let reportRange = sync.getCurrentDateRangeToSync() {
             
-            let currentActivityId = sync.getCurrentActivityToSync().identifier
+            let currentActivityId = sync.getCurrentActivityToSync()
             sync.nextActivityToSync()
             
+            let mostRecentActivityDate = sync.getMostRecentActivityDate(activity: currentActivityId)
+            
+            if reportRange.0 <= mostRecentActivityDate {
+                queryNextItem()
+                return
+            }
+            
             DispatchQueue.main.async {
-                self.activityId = currentActivityId
+                self.activityId = currentActivityId.identifier
                 self.queryDate = String(reportRange.0.year)
                 self.queryMonth = String(reportRange.0.month)
             }
 
-            sss.latestDateOfActivity(user_id: String(1), activity: currentActivityId, completionHandler: { date, error in
+            sss.latestDateOfActivity(user_id: 1, activity: currentActivityId.identifier, completionHandler: { date, error in
                 
                 // If the most recent item is less than
                 // the Report End Date.
                 if date < reportRange.1 {
-                    hkh.queryQuantityTypeByDateRange(user_id: 1, activity: HKQuantityTypeIdentifier(rawValue: currentActivityId), queryStartDate: reportRange.0, queryEndDate: reportRange.1)
+                    hkh.queryQuantityTypeByDateRange(user_id: 1, activity: HKQuantityTypeIdentifier(rawValue: currentActivityId.identifier), queryStartDate: reportRange.0, queryEndDate: reportRange.1)
                     self.action = "Querying"
                 } else {
                     self.queryNextItem()

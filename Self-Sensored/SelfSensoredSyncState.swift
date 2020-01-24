@@ -10,6 +10,7 @@ import Foundation
 import HealthKit
 
 protocol SelfSensoredSyncStateDelegate {
+    func populatedLatestDates(latestDates: Dictionary<HKObjectType, Date>)
     func allDatesHaveBeenQueried()
     func allActivitiesHaveBeenQueried()
 }
@@ -22,7 +23,7 @@ class SelfSensoredSyncState {
     
     internal var yearsToSyncRange: [(Date, Date)]
     internal var activitiesToSync: Array<HKObjectType> = []
-    internal var latestActivityDate: Dictionary<HKObjectType, Date> = [:]
+    internal var latestActivityDates: Dictionary<HKObjectType, Date> = [:]
     internal var activitiesIndex = 0
     
     internal var currentDateRange: (Date, Date)
@@ -65,8 +66,20 @@ class SelfSensoredSyncState {
         return someDateTime!
     }
     
-    public func populateLatestDateForActivities() {
-        
+    public func populateLatestDateForActivities(user_id: Int) {
+        for activity in activitiesToSync {
+            ssServer.latestDateOfActivity(user_id: user_id, activity: activity.identifier) { (date, error) in
+                if(error != "") { print(error) }
+                self.latestActivityDates[activity] = date
+                if self.latestActivityDates.count == self.activitiesToSync.count {
+                    self.delegate?.populatedLatestDates(latestDates: self.latestActivityDates)
+                }
+            }
+        }
+    }
+    
+    public func getMostRecentActivityDate(activity: HKObjectType) -> Date {
+        return latestActivityDates[activity] ?? Date()
     }
     
     // Funcs

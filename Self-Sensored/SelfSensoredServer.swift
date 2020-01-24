@@ -25,9 +25,9 @@ class SelfSensoredServer {
 
     }
     
-    func latestDateOfActivity(user_id: String, activity: String, completionHandler: @escaping (_ result: Date, _ error: String) -> Void){
+    func latestDateOfActivity(user_id: Int, activity: String, completionHandler: @escaping (_ result: Date, _ error: String) -> Void){
 
-        let url = "http://maddatum.com:3000/activities/" + activity + "/" + (user_id) + "/latest"
+        let url = "http://maddatum.com:3000/activities/" + activity + "/" + String(user_id) + "/latest"
 
         // Attempt to post data.
         Alamofire.request(url, method: .get, encoding: Alamofire.JSONEncoding.default).validate().responseJSON { response in
