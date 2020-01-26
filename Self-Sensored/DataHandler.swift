@@ -114,13 +114,13 @@ class DataHandler: SelfSensoredHealthKitHelper, HKQueryDelegate, SelfSensoredSer
     func queryNextItem() {
         
         if let reportRange = sync.getCurrentDateRangeToSync() {
-            
             let currentActivityId = sync.getCurrentActivityToSync()
+            
             sync.nextActivityToSync()
             
             let mostRecentActivityDate = sync.getMostRecentActivityDate(activity: currentActivityId)
             
-            if reportRange.0 <= mostRecentActivityDate {
+            if mostRecentActivityDate > reportRange.1 {
                 queryNextItem()
                 return
             }
@@ -135,12 +135,18 @@ class DataHandler: SelfSensoredHealthKitHelper, HKQueryDelegate, SelfSensoredSer
                 
                 // If the most recent item is less than
                 // the Report End Date.
-                if date < reportRange.1 {
-                    hkh.queryQuantityTypeByDateRange(user_id: 1, activity: HKQuantityTypeIdentifier(rawValue: currentActivityId.identifier), queryStartDate: reportRange.0, queryEndDate: reportRange.1)
-                    self.action = "Querying"
+                
+                var startDate = Date()
+                if date < reportRange.0 {
+                    startDate = reportRange.0
                 } else {
-                    self.queryNextItem()
+                    startDate = date
                 }
+                print(currentActivityId.identifier)
+                print(startDate)
+                print(reportRange.1)
+                self.action = "Querying"
+                hkh.queryQuantityTypeByDateRange(user_id: 1, activity: HKQuantityTypeIdentifier(rawValue: currentActivityId.identifier), queryStartDate: startDate, queryEndDate: reportRange.1)
             })
         }
 

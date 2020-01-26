@@ -48,6 +48,9 @@ class SelfSensoredSyncState {
             // Get each month
             for monthIndex in 1...12 {
                 let startDate = createDateForRange(year: year, month: monthIndex, day: 1)
+                if startDate > Date().date {
+                    break
+                }
                 let endDate = startDate.dateByAdding(1, .month).dateByAdding(-1, .day).date
                 dates.append((startDate, endDate))
             }
