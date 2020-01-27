@@ -117,13 +117,22 @@ class SelfSensoredHealthKitHelper {
     }
     
     public func getAllHKQuantityTypes() -> Array<HKObjectType> {
+        // TODO: Alphabetize
         let dataTypes : Array = [
                                 HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.heartRate)!,
                                 HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.restingHeartRate)!,
                                 HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.stepCount)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.activeEnergyBurned)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.appleStandTime)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.appleExerciseTime)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!,
                                 HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodPressureSystolic)!,
                                 HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodPressureDiastolic)!,
-                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyMass)!
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyMass)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyMassIndex)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyFatPercentage)!,
+                                HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bodyTemperature)!
+                                
         ]
         return dataTypes
     }
@@ -182,12 +191,38 @@ extension HKQuantitySample {
     func commonExpressedUnit() -> HKUnit {
         var unitType:HKUnit = HKUnit.count()
         switch self.quantityType.identifier {
+        case HKQuantityTypeIdentifier.activeEnergyBurned.rawValue:
+            unitType = HKUnit.kilocalorie()
+            break
+        case HKQuantityTypeIdentifier.appleStandTime.rawValue:
+            unitType = HKUnit.count().unitDivided(by: HKUnit.minute())
+            break
+        case HKQuantityTypeIdentifier.appleExerciseTime.rawValue:
+            unitType = HKUnit.minute()
+            break
+        case HKQuantityTypeIdentifier.bloodGlucose.rawValue:
+            // Blood glucose samples may be measured in mg/dL (milligrams per deciliter) or mmol/L (millimoles per liter), depending on the region.
+            // You can access the preferred units using the preferredUnitsForQuantityTypes:completion: method.
+            unitType = HKUnit.moleUnit(with: .milli, molarMass: HKUnitMolarMassBloodGlucose)
+            break
         case HKQuantityTypeIdentifier.bodyMass.rawValue:
             unitType = HKUnit.pound()
+            break
+        case HKQuantityTypeIdentifier.bodyFatPercentage.rawValue:
+            unitType = HKUnit.percent()
+            break
+        case HKQuantityTypeIdentifier.bodyMassIndex.rawValue:
+            unitType = HKUnit.count()
+            break
         case HKQuantityTypeIdentifier.bloodPressureDiastolic.rawValue:
             unitType = HKUnit.pascalUnit(with: HKMetricPrefix.milli)
+            break
         case HKQuantityTypeIdentifier.bloodPressureSystolic.rawValue:
             unitType = HKUnit.pascalUnit(with: HKMetricPrefix.milli)
+            break
+        case HKQuantityTypeIdentifier.bodyTemperature.rawValue:
+            unitType = HKUnit.degreeFahrenheit()
+            break
         case HKQuantityTypeIdentifier.stepCount.rawValue:
             unitType = HKUnit.count()
             break

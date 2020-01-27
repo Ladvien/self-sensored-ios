@@ -142,9 +142,6 @@ class DataHandler: SelfSensoredHealthKitHelper, HKQueryDelegate, SelfSensoredSer
                 } else {
                     startDate = date
                 }
-                print(currentActivityId.identifier)
-                print(startDate)
-                print(reportRange.1)
                 self.action = "Querying"
                 hkh.queryQuantityTypeByDateRange(user_id: 1, activity: HKQuantityTypeIdentifier(rawValue: currentActivityId.identifier), queryStartDate: startDate, queryEndDate: reportRange.1)
             })

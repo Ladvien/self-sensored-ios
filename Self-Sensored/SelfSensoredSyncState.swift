@@ -8,6 +8,7 @@
 
 import Foundation
 import HealthKit
+import SwiftyJSON
 
 protocol SelfSensoredSyncStateDelegate {
     func populatedLatestDates(latestDates: Dictionary<HKObjectType, Date>)
@@ -17,10 +18,12 @@ protocol SelfSensoredSyncStateDelegate {
 
 class SelfSensoredSyncState {
     
+    let defaults = UserDefaults.standard
+    
     var delegate: SelfSensoredSyncStateDelegate?
     
     internal var ssServer: SelfSensoredServer
-    
+
     internal var yearsToSyncRange: [(Date, Date)]
     internal var activitiesToSync: Array<HKObjectType> = []
     internal var latestActivityDates: Dictionary<HKObjectType, Date> = [:]
@@ -28,6 +31,7 @@ class SelfSensoredSyncState {
     
     internal var currentDateRange: (Date, Date)
     
+    internal let userDefaultsLatestDateKeyPrefix = "latest_date_for_"
     
     init(selfSensoredServer: SelfSensoredServer, numberOfYearsPast: Int, activities: Array<HKObjectType>) {
         self.yearsToSyncRange = SelfSensoredSyncState.createArrayOfDates(numberOfYearsPast: numberOfYearsPast)
@@ -48,6 +52,7 @@ class SelfSensoredSyncState {
             // Get each month
             for monthIndex in 1...12 {
                 let startDate = createDateForRange(year: year, month: monthIndex, day: 1)
+                // Quit before adding future dates.
                 if startDate > Date().date {
                     break
                 }
@@ -75,7 +80,8 @@ class SelfSensoredSyncState {
                 if(error != "") { print(error) }
                 self.latestActivityDates[activity] = date
                 if self.latestActivityDates.count == self.activitiesToSync.count {
-                    self.delegate?.populatedLatestDates(latestDates: self.latestActivityDates)
+                    self.syncServerAndUserDefaults()
+//                    self.delegate?.populatedLatestDates(latestDates: self.latestActivityDates)
                 }
             }
         }
@@ -87,6 +93,12 @@ class SelfSensoredSyncState {
     
     // Funcs
     func getNextDateRangeToSync() {
+        
+        // TODO: Update saved states of LatestActivityDates.
+        //       This should prevent a user from having to wait
+        //       through rechecking ranges checked in a previous
+        //       session.
+        
         if yearsToSyncRange.count > 0 {
             yearsToSyncRange.removeFirst()
         } else {
@@ -96,6 +108,7 @@ class SelfSensoredSyncState {
     
     func getCurrentDateRangeToSync() -> (Date, Date)? {
         if let dates = yearsToSyncRange.first {
+            print(dates)
             return dates
         }
         return nil
@@ -113,4 +126,50 @@ class SelfSensoredSyncState {
     func getCurrentActivityToSync() -> HKObjectType {
         return activitiesToSync[activitiesIndex]
     }
+    
+    func syncServerAndUserDefaults() {
+        
+        // For eachActivity
+            // 1. Get user default record
+            //      a. If none, store server's date and break.
+            // 2. Compare server's and default's latest date.
+            //      a. If server's date is greater or equal, set default date.
+            //      b. If default's date is greater, update latestActivityDates
+        
+        for key in latestActivityDates.keys {
+            let date = latestActivityDates[key]!.date.toString()
+            let keyName = getLatestActivityNameForUserDefaults(activityId: key.identifier)
+            saveLatestActivityDateToUserDefaults(activityKey: keyName, date: date)
+        }
+    }
+ 
+    func getStringDictionaryFromLatestActivityDates() -> Dictionary<String, String> {
+        var stringDict = Dictionary<String, String>()
+        for key in latestActivityDates.keys {
+            if let date = latestActivityDates[key]?.date.toString() {
+                stringDict[key.identifier] = date
+            }
+        }
+        return stringDict
+    }
+    
+    func saveLatestActivityDateToUserDefaults(activityKey: String, date: String)  {
+        defaults.set(date, forKey: activityKey)
+    }
+    
+    func getLatestActivityNameForUserDefaults(activityId: String) -> String {
+        return userDefaultsLatestDateKeyPrefix + activityId
+    }
+    
+    func getHKObjectFromUserDefaultsString(userDefaultsKey: String) -> HKObjectType? {
+        let stringId = userDefaultsKey.replacingOccurrences(of: userDefaultsLatestDateKeyPrefix, with: "")
+        if let hkObjectType = HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier(rawValue: stringId)) {
+            return hkObjectType
+        }
+        return nil
+    }
+    
+//    func getLatestActvityDatesFromStringDictionary() -> Dictionary<HKObjectType, Date> {
+//
+//    }
 }
