@@ -96,7 +96,6 @@ class DataHandler: SelfSensoredHealthKitHelper, HKQueryDelegate, SelfSensoredSer
     
     // CALLBACKS: SelfSensoredSyncState
     func populatedLatestDates(latestDates: Dictionary<HKObjectType, Date>) {
-        print(latestDates)
         queryNextItem()
     }
     

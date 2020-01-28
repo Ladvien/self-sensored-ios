@@ -80,8 +80,8 @@ class SelfSensoredSyncState {
                 if(error != "") { print(error) }
                 self.latestActivityDates[activity] = date
                 if self.latestActivityDates.count == self.activitiesToSync.count {
-                    self.syncServerAndUserDefaults()
-//                    self.delegate?.populatedLatestDates(latestDates: self.latestActivityDates)
+                    self.initialSyncServerAndUserDefaults()
+                    self.delegate?.populatedLatestDates(latestDates: self.latestActivityDates)
                 }
             }
         }
@@ -91,14 +91,14 @@ class SelfSensoredSyncState {
         return latestActivityDates[activity] ?? Date()
     }
     
+    public func setMostRecentActivityDate(activity: HKObjectType, date: Date) {
+        let key = getLatestActivityNameForUserDefaults(activityId: activity.identifier)
+        defaults.set(date, forKey: key)
+    }
+    
     // Funcs
     func getNextDateRangeToSync() {
-        
-        // TODO: Update saved states of LatestActivityDates.
-        //       This should prevent a user from having to wait
-        //       through rechecking ranges checked in a previous
-        //       session.
-        
+        endOfReportRangeSyncServerAndDefault()
         if yearsToSyncRange.count > 0 {
             yearsToSyncRange.removeFirst()
         } else {
@@ -108,7 +108,6 @@ class SelfSensoredSyncState {
     
     func getCurrentDateRangeToSync() -> (Date, Date)? {
         if let dates = yearsToSyncRange.first {
-            print(dates)
             return dates
         }
         return nil
@@ -127,8 +126,26 @@ class SelfSensoredSyncState {
         return activitiesToSync[activitiesIndex]
     }
     
-    func syncServerAndUserDefaults() {
-        
+    func endOfReportRangeSyncServerAndDefault() {
+        if let recentlySyncedEndDate = getCurrentDateRangeToSync()?.1 {
+            for key in latestActivityDates.keys {
+                if let previousEndDate = latestActivityDates[key] {
+                    if recentlySyncedEndDate > previousEndDate {
+                        let userDefaultKey = getLatestActivityNameForUserDefaults(activityId: key.identifier)
+                        defaults.set(recentlySyncedEndDate.date.toISO(), forKey: userDefaultKey)
+                    }
+                }
+            }
+        }
+    }
+    
+    func initialSyncServerAndUserDefaults() {
+        for key in latestActivityDates.keys {
+            initialSyncServerAndDefault(key: key)
+        }
+    }
+    
+    func initialSyncServerAndDefault(key: HKObjectType) {
         // For eachActivity
             // 1. Get user default record
             //      a. If none, store server's date and break.
@@ -136,10 +153,35 @@ class SelfSensoredSyncState {
             //      a. If server's date is greater or equal, set default date.
             //      b. If default's date is greater, update latestActivityDates
         
-        for key in latestActivityDates.keys {
-            let date = latestActivityDates[key]!.date.toString()
-            let keyName = getLatestActivityNameForUserDefaults(activityId: key.identifier)
-            saveLatestActivityDateToUserDefaults(activityKey: keyName, date: date)
+        let keyForDefaults = getLatestActivityNameForUserDefaults(activityId: key.identifier)
+        
+        // 1.
+        if let userDefaultsDate = defaults.object(forKey: keyForDefaults) as? String {
+            if let localDate = userDefaultsDate.toISODate()?.date {
+                let remoteDate = latestActivityDates[key]!
+                print(keyForDefaults)
+                if remoteDate >= localDate {
+                    // 2.a
+                    print("Remote is greater.")
+                    latestActivityDates[key] = localDate
+                    defaults.set(localDate, forKey: keyForDefaults)
+                } else {
+                    // 2.b
+                    print("Local is greater.")
+                    latestActivityDates[key] = localDate
+                }
+                print("Local: \(localDate.toString())")
+                print("Remote: \(remoteDate.toString())")
+                print()
+            } else {
+                print("\(keyForDefaults): Can't convert userDefaultsDate to actual date.")
+            }
+            print()
+        } else {
+            // 1.a
+            if let date = latestActivityDates[key]?.date.toISO() {
+                defaults.set(date, forKey: keyForDefaults)
+            }
         }
     }
  
@@ -153,10 +195,6 @@ class SelfSensoredSyncState {
         return stringDict
     }
     
-    func saveLatestActivityDateToUserDefaults(activityKey: String, date: String)  {
-        defaults.set(date, forKey: activityKey)
-    }
-    
     func getLatestActivityNameForUserDefaults(activityId: String) -> String {
         return userDefaultsLatestDateKeyPrefix + activityId
     }
@@ -168,8 +206,4 @@ class SelfSensoredSyncState {
         }
         return nil
     }
-    
-//    func getLatestActvityDatesFromStringDictionary() -> Dictionary<HKObjectType, Date> {
-//
-//    }
 }
